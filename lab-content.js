@@ -79,7 +79,25 @@
     cross('Dos personas sin fibrosis quística tuvieron un hijo con la enfermedad. Deducí el cruce. Calculá por separado el porcentaje de portadores y el porcentaje total sin fibrosis quística en otro embarazo.', ['N', 'n'], ['N', 'n'], [percent('Portadores', 50), percent('Sin fibrosis quística, incluyendo portadores', 75), percent('Con fibrosis quística', 25)], 'El hijo nn recibió n de ambos. Como los progenitores no presentan la enfermedad, ambos son Nn. Dos casillas Nn son portadoras. Las dos Nn y la NN suman tres casillas sin fibrosis quística.', [genotype('Primer progenitor', 'Nn'), genotype('Segundo progenitor', 'Nn')])
   ];
   [1, 3, 0, 2, 1, 0, 2, 1, 3, 2].forEach((lesson, i) => { challenge[i].review = lesson; });
-  const data = { lessons, challenge };
+  const fqCategories = [
+    { label: 'Portadores', cells: [1, 2], reason: 'Contá las dos casillas Nn. NN no porta n y nn corresponde a fibrosis quística.' },
+    { label: 'Con fibrosis quística', cells: [3], reason: 'Contá solo nn. En este modelo se necesitan dos copias n para presentar la enfermedad.' },
+    { label: 'Sin fibrosis quística, incluyendo portadores', cells: [0, 1, 2], reason: 'Sumá la casilla NN y las dos Nn. Contar solo Nn da 50 %, que es el porcentaje de portadores. Contar solo NN da 25 %, que es el de no portadores sin la enfermedad.' },
+    { label: 'Sin fibrosis quística y no portadores', cells: [0], reason: 'Contá solo NN. Las dos casillas Nn también están sin la enfermedad, pero sí portan n.' }
+  ];
+  const reinforcement = {
+    title: 'Fibrosis quística: ¿qué casillas cuentan?',
+    top: ['N', 'n'], left: ['N', 'n'], cells: ['NN', 'Nn', 'Nn', 'nn'],
+    categories: fqCategories,
+    conclusion: 'En una enfermedad recesiva, una persona portadora puede estar sana. Por eso, «sin fibrosis quística, incluyendo portadores» incluye tanto NN como Nn. En el cruce Nn × Nn suman 3 de 4 casillas, es decir, 75 % por embarazo.',
+    activities: [
+      match('Uní cada genotipo con lo que permite afirmar.', [['NN', 'Sin fibrosis quística y no portador'], ['Nn', 'Portador sin fibrosis quística'], ['nn', 'Con fibrosis quística']], ['Portador sin fibrosis quística', 'Con fibrosis quística', 'Sin fibrosis quística y no portador'], 'NN tiene dos copias funcionales. Nn tiene una copia n y puede transmitirla sin presentar fibrosis quística. nn tiene dos copias n en el modelo.'),
+      match('Relacioná cada categoría con su porcentaje en Nn × Nn. Podés usar el mismo porcentaje más de una vez.', fqCategories.map(c => [c.label, `${c.cells.length * 25} %`]), ['75 %', '25 %', '50 %'], 'Hay dos Nn, un nn y un NN. Los dos Nn y el NN suman 75 % sin fibrosis quística. Tanto nn como NN ocupan una casilla, por eso dos categorías distintas usan 25 %.'),
+      { kind: 'select-cells', title: 'Marcá todas las casillas que corresponden a cada categoría.', groups: [fqCategories[0], fqCategories[2], fqCategories[1]], explanation: 'Cada casilla vale 25 %. Un Nn se cuenta tanto en portadores como en personas sin fibrosis quística. Son categorías que se superponen.' },
+      cross('Dos personas sin fibrosis quística tuvieron un hijo con la enfermedad. Deducí el cruce y calculá las cuatro probabilidades para otro embarazo.', ['N', 'n'], ['N', 'n'], fqCategories.map(c => ({ ...percent(c.label, c.cells.length * 25), hint: c.reason })), 'El hijo nn recibió n de cada progenitor. Como ninguno presenta la enfermedad, ambos tienen además N. En Nn × Nn hay un NN, dos Nn y un nn. Contá cada categoría por separado.', [genotype('Primer progenitor (arriba)', 'Nn'), genotype('Segundo progenitor (izquierda)', 'Nn')])
+    ]
+  };
+  const data = { lessons, challenge, reinforcement };
   root.LabContent = data;
   if (typeof module !== 'undefined') module.exports = data;
 })(globalThis);

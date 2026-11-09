@@ -23,4 +23,22 @@
 .lab-status{min-height:1.3em;margin:.5rem 0;color:var(--green)}
 .lab-palette-label{margin:.5rem 0 0}
 .lab-task .punnett{margin-left:0}
+.fq-link{margin-top:1.5rem}
+.fq-example{margin:1.3rem 0}
+.fq-example h3,.fq-example figcaption{text-align:center}
+.fq-example .punnett{font-size:1.2rem}
+.fq-tag{display:inline-block;padding:.22rem .55rem;border-radius:8px;font-weight:750;white-space:nowrap}
+.fq-NN{background:#dfead3;color:#244738}
+.fq-Nn{background:#eee4fa;color:#503776}
+.fq-nn{background:#f6ded4;color:#783829}
+.fq-counts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.65rem;margin:1rem 0}
+.fq-counts>div{padding:.7rem .9rem;border:1px solid var(--line);border-radius:12px;background:#f8faf3}
+.fq-counts dt{font-weight:750;line-height:1.4}
+.fq-counts dd{display:flex;flex-wrap:wrap;gap:.4rem 1rem;align-items:center;margin:.45rem 0 0}
+.fq-counts>div:nth-child(3){background:#eef5e2;border-color:#8da880}
+.fq-selection{border:1px solid var(--line);border-radius:12px;min-width:0;padding:.5rem .75rem;margin:0 0 1rem}
+.fq-selection legend{padding:0 .3rem;font-weight:750}
+.punnett button.fq-select[aria-pressed=true]{border-style:solid;border-color:var(--green);background:var(--green);color:#fff}
+.fq-select[aria-pressed=true]::after{content:' ✓'}
 @media(max-width:600px){.lab-path{grid-template-columns:1fr}.lab-match button{font-size:.8rem}.lab-match{column-gap:30px}.lab-diagram .gene-pair{flex-basis:104px}}
+@media(max-width:600px){.fq-counts{grid-template-columns:1fr}.fq-example .punnett th,.fq-example .punnett td{padding:.2rem}}

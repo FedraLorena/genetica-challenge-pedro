@@ -30,12 +30,14 @@
   function blank(task) {
     if (task.kind === 'match') return { links: task.pairs.map(() => '') };
     if (task.kind === 'fill') return { fields: task.fields.map(() => '') };
+    if (task.kind === 'select-cells') return { selections: task.groups.map(() => []) };
     return { before: task.before.map(() => ''), top: ['', ''], left: ['', ''], cells: ['', '', '', ''], after: task.after.map(() => '') };
   }
 
   function solution(task) {
     if (task.kind === 'match') return { links: task.pairs.map(pair => pair[1]) };
     if (task.kind === 'fill') return { fields: task.fields.map(f => f.expected) };
+    if (task.kind === 'select-cells') return { selections: task.groups.map(group => [...group.cells]) };
     return { before: task.before.map(f => f.expected), top: task.top, left: task.left, cells: task.left.flatMap(left => task.top.map(top => combine(top, left))), after: task.after.map(f => f.expected) };
   }
 
@@ -45,13 +47,20 @@
     const fields = (label, definitions, values) => {
       if (!definitions.length) return;
       const incorrect = definitions.filter((f, i) => !fieldCorrect(f, values[i]));
-      add(label, values, !incorrect.length, `Revisá ${incorrect.map(f => f.label).join(', ')}.`);
+      const hints = incorrect.filter(f => f.hint).map(f => `${f.label}. ${f.hint}`);
+      add(label, values, !incorrect.length, [`Revisá ${incorrect.map(f => f.label).join(', ')}.`, ...hints].join(' '));
     };
     if (task.kind === 'match') {
       const wrong = task.pairs.filter((p, i) => p[1] !== answer.links[i]);
       add('Relaciones', answer.links, !wrong.length, `Revisá las conexiones de ${wrong.map(p => p[0]).join(', ')}.`);
     } else if (task.kind === 'fill') {
       fields('Interpretación', task.fields, answer.fields);
+    } else if (task.kind === 'select-cells') {
+      task.groups.forEach((group, i) => {
+        const selected = answer.selections[i];
+        const correct = selected.length === group.cells.length && group.cells.every(cell => selected.includes(cell));
+        checks.push({ label: group.label, complete: selected.length > 0, correct, message: group.reason });
+      });
     } else {
       fields('Genotipos parentales', task.before, answer.before);
       const samePair = (actual, expected) => [...actual].sort().join('|') === [...expected].sort().join('|');
@@ -92,7 +101,7 @@
   if (typeof module !== 'undefined') module.exports = { KEY, combine, blank, solution, assess, fresh, unlocked, load, submit };
   if (typeof document === 'undefined') return;
 
-  const { lessons, challenge } = root.LabContent;
+  const { lessons, challenge, reinforcement } = root.LabContent;
   const main = document.getElementById('lab-main');
   const warning = document.getElementById('storage-warning');
   const esc = value => trim(value).replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
@@ -154,14 +163,54 @@
     }).join('');
     if (task.kind === 'match') return `<ul>${task.pairs.map(([label], i) => `<li>${esc(label)} → ${esc(answer.links[i] || '—')}</li>`).join('')}</ul>`;
     if (task.kind === 'fill') return `<ul>${fields(task.fields, answer.fields)}</ul>`;
+    if (task.kind === 'select-cells') return `<ul>${task.groups.map((group, i) => `<li>${esc(group.label)} · ${answer.selections[i].map(cell => `${reinforcement.cells[cell]} (casilla ${cell + 1})`).join(', ')}</li>`).join('')}</ul>`;
     return `${task.before.length ? `<ul>${fields(task.before, answer.before)}</ul>` : ''}${grid(answer.top, answer.left, answer.cells)}<ul>${fields(task.after, answer.after)}</ul>`;
   }
 
   function taskBox(task, answer, key, label, practice) {
     const done = practice && state.passed[key];
     const result = practice && feedback[key];
-    const body = done ? readTask(task, done) : task.kind === 'match' ? matching(task, answer, key) : task.kind === 'cross' ? crossing(task, answer, key) : inputs(task.fields, answer.fields, 'fields', key);
-    return `<section class="panel lab-task" id="task-${key}"><p class="eyebrow">${label}${done ? ' · ✓ Resuelta' : ''}</p><h2>${esc(task.title)}</h2>${body}${done ? `<p class="takeaway">${task.explanation}</p>` : `<p class="lab-status small" role="status" id="status-${key}"></p>${result ? `<div class="feedback error" role="status"><ul>${result.checks.map(check => `<li><strong>${check.label}</strong> · ${!check.complete ? 'Faltan datos.' : check.correct ? 'Correcto.' : esc(check.message)}</li>`).join('')}</ul>${result.complete ? `<p>${task.explanation}</p>` : ''}</div>` : ''}${practice ? `<div class="question-actions"><button class="primary" type="button" data-check="${key}">${result ? 'Volver a comprobar' : 'Comprobar actividad'}</button><a class="button secondary" href="#lab-explanation" data-explanation>Revisar explicación</a></div>` : ''}`}</section>`;
+    let body;
+    if (done) body = readTask(task, done);
+    else if (task.kind === 'match') body = matching(task, answer, key);
+    else if (task.kind === 'cross') body = crossing(task, answer, key);
+    else if (task.kind === 'select-cells') body = cellSelection(task, answer, key);
+    else body = inputs(task.fields, answer.fields, 'fields', key);
+    const interpretationOnly = key === 'fq-3' && result?.complete && result.checks.every(check => check.label === 'Interpretación' ? !check.correct : check.correct);
+    const note = interpretationOnly ? '<p><strong>El cruce y el cuadro están bien.</strong> Revisemos qué casillas cuenta cada categoría.</p>' : '';
+    return `<section class="panel lab-task" id="task-${key}"><p class="eyebrow">${label}${done ? ' · ✓ Resuelta' : ''}</p><h2>${esc(task.title)}</h2>${body}${done ? `<p class="takeaway">${task.explanation}</p>` : `<p class="lab-status small" role="status" id="status-${key}"></p>${result ? `<div class="feedback error" role="status">${note}<ul>${result.checks.map(check => `<li><strong>${check.label}</strong> · ${!check.complete ? 'Faltan datos.' : check.correct ? 'Correcto.' : esc(check.message)}</li>`).join('')}</ul>${result.complete ? `<p>${task.explanation}</p>` : ''}</div>` : ''}${practice ? `<div class="question-actions"><button class="primary" type="button" data-check="${key}">${result ? 'Volver a comprobar' : 'Comprobar actividad'}</button><a class="button secondary" href="#lab-explanation" data-explanation>Revisar explicación</a></div>` : ''}`}</section>`;
+  }
+
+  function cellSelection(task, answer, key) {
+    return `<p>Tocá una casilla para marcarla o desmarcarla. Hacé la selección por separado para cada categoría.</p>${task.groups.map((group, i) => {
+      const slot = (part, cell, value, label) => part === 'cells'
+        ? `<button type="button" class="slot fq-select" data-key="${key}" data-cell="${cell}" data-group="${i}" aria-pressed="${answer.selections[i].includes(cell)}" aria-label="${esc(`${group.label}, ${label}, ${value}`)}">${value}</button>`
+        : esc(value);
+      return `<fieldset class="fq-selection"><legend>${esc(group.label)}</legend>${grid(reinforcement.top, reinforcement.left, reinforcement.cells, slot)}</fieldset>`;
+    }).join('')}`;
+  }
+
+  function reinforcementLink() {
+    return '<section class="panel fq-link"><p class="eyebrow">Refuerzo complementario</p><h2>¿Cómo se cuentan los portadores?</h2><p>Practicá la diferencia entre no tener fibrosis quística y no portar la variante.</p><a class="button" href="#refuerzo">Abrir refuerzo de fibrosis quística →</a></section>';
+  }
+
+  function reinforcementPage() {
+    const r = reinforcement;
+    const count = r.activities.filter((_, i) => state.passed[`fq-${i}`]).length;
+    const labeled = (part, i, value) => part === 'cells' ? `<span class="fq-tag fq-${value}">${value}</span>` : esc(value);
+    return `<div class="breadcrumbs"><a href="#laboratorio">← Laboratorio</a><span>Refuerzo complementario</span></div>
+      <h1>${r.title}</h1><p class="muted">${count} de 4 actividades resueltas</p>
+      <section class="panel" id="lab-explanation" tabindex="-1">
+        <p class="eyebrow">Comprender</p><h2>Primero leé las letras. Después contá.</h2>
+        <p>Cada persona recibe dos copias del gen CFTR, una de cada progenitor. El gen está en un cromosoma no sexual y, en este modelo, hacen falta dos variantes causales para presentar fibrosis quística. A ese patrón se lo llama <strong>herencia autosómica recesiva</strong>.</p>
+        <p><strong>N</strong> representa una copia funcional y <strong>n</strong>, una variante que puede causar fibrosis quística. Las letras simplifican el modelo. «Sana» se refiere aquí a no presentar fibrosis quística.</p>
+        <div class="lab-diagram">${[['NN', 'Sin fibrosis quística y no portador'], ['Nn', 'Portador sin fibrosis quística'], ['nn', 'Con fibrosis quística']].map(([genes, label]) => `<div class="gene-pair"><strong class="fq-tag fq-${genes}">${genes}</strong><small>${label}</small></div>`).join('')}</div>
+        <figure class="concept-visual fq-example"><h3>Cuadro de Punnett · Nn × Nn</h3>${grid(r.top, r.left, r.cells, labeled)}<figcaption>1 de 4 es NN, 2 de 4 son Nn y 1 de 4 es nn. Cada casilla representa 25 % por embarazo.</figcaption></figure>
+        <dl class="fq-counts">${r.categories.map(category => `<div><dt>${category.label}</dt><dd><span>${category.cells.map(cell => `<span class="fq-tag fq-${r.cells[cell]}">${r.cells[cell]}</span>`).join(' + ')}</span><strong>${category.cells.length} de 4 = ${category.cells.length * 25} %</strong></dd></div>`).join('')}</dl>
+        <div class="takeaway"><strong>«Sin fibrosis quística» incluye NN y Nn.</strong> Las palabras «incluyendo portadores» hacen explícito que Nn también cuenta. Cuando la consigna agrega «y no portadores», solo cuenta NN.</div>
+      </section>
+      ${r.activities.map((task, i) => taskBox(task, answers[`fq-${i}`] || blank(task), `fq-${i}`, `Actividad ${i + 1} de 4`, true)).join('')}
+      <section class="panel"><h2>Qué recordar</h2><p>${r.conclusion}</p><a href="#laboratorio">← Volver al laboratorio</a></section>`;
   }
 
   function home() {
@@ -189,6 +238,7 @@
   }
 
   function route() {
+    if (location.hash === '#refuerzo') return { page: 'reinforcement' };
     const match = location.hash.match(/^#(clase|desafio|resultado)(?:\/(\d+))?$/);
     if (!match) return { page: 'home' };
     const index = Number(match[2] || 0) - 1;
@@ -200,11 +250,12 @@
 
   function render(keep = false) {
     view = route();
-    if (view.page === 'lesson') main.innerHTML = lessonPage(view.index);
+    if (view.page === 'reinforcement') main.innerHTML = reinforcementPage();
+    else if (view.page === 'lesson') main.innerHTML = lessonPage(view.index) + (view.index === 2 ? reinforcementLink() : '');
     else if (view.page === 'challenge') main.innerHTML = challengePage(view.index);
     else if (view.page === 'result') main.innerHTML = resultPage(state.results[view.index]);
     else if (view.page === 'locked') main.innerHTML = '<section class="panel"><h1>Actividad bloqueada</h1><p>Completá las microclases anteriores para acceder.</p><a class="button" href="#laboratorio">Volver al laboratorio</a></section>';
-    else main.innerHTML = home();
+    else main.innerHTML = home() + reinforcementLink();
     observer?.disconnect();
     observer = typeof ResizeObserver === 'function' ? new ResizeObserver(drawLines) : null;
     main.querySelectorAll('[data-match]').forEach(board => observer?.observe(board));
@@ -213,6 +264,7 @@
   }
 
   function taskFor(key) {
+    if (view.page === 'reinforcement' && key.startsWith('fq-')) return reinforcement.activities[Number(key.slice(3))];
     if (key.startsWith('d-') && view.page === 'challenge' && state.draft) return challenge[Number(key.slice(2))];
     if (view.page === 'lesson' && key.startsWith(`${view.index}-`)) return lessons[view.index].activities[Number(key.split('-')[1])];
     return null;
@@ -287,7 +339,7 @@
       section.scrollIntoView(); section.focus({ preventScroll: true });
     }
     if (!button) return;
-    const { key, source, target, piece, slot, step, check } = button.dataset;
+    const { key, source, target, piece, slot, step, check, cell, group } = button.dataset;
     if (step !== undefined) {
       steps[step] = Math.min(2, (steps[step] || 0) + 1);
       document.getElementById('lab-example').outerHTML = example(lessons[step], Number(step));
@@ -304,6 +356,15 @@
       row.querySelector('small').textContent = `→ ${value}`;
       status(key, `Conexión con ${value} guardada.`);
       drawLines();
+    } else if (cell !== undefined) {
+      const task = taskFor(key);
+      if (task?.kind !== 'select-cells' || state.passed[key]) return;
+      const selectedCells = answerFor(key, task).selections[Number(group)];
+      const index = Number(cell), previous = selectedCells.indexOf(index);
+      if (previous === -1) selectedCells.push(index);
+      else selectedCells.splice(previous, 1);
+      button.setAttribute('aria-pressed', String(previous === -1));
+      status(key, `${selectedCells.length} casillas marcadas para ${task.groups[Number(group)].label}.`);
     } else if (piece !== undefined) {
       select(button, { key, piece }, '[data-piece]');
       status(key, `Ficha ${piece} elegida. Tocá una casilla.`);
