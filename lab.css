@@ -1,0 +1,26 @@
+.lab-hero{padding:clamp(1.4rem,5vw,3rem);border-radius:24px;background:#e2eacb;margin-bottom:1.5rem}
+.lab-lead{font-size:clamp(1.2rem,3vw,1.55rem);font-weight:750;line-height:1.3}
+.lab-path{grid-template-columns:repeat(2,minmax(0,1fr))}
+.lab-path .lesson-card{min-height:160px;gap:.65rem}
+.lab-history,.lab-result{margin-top:1.5rem}
+.lab-diagram{display:flex;gap:.7rem;justify-content:center;flex-wrap:wrap}
+.lab-diagram .gene-pair{flex:1 1 125px}
+.lab-diagram svg{width:90px;height:70px}
+.lab-diagram text,.concept-visual svg text{fill:var(--ink);font:700 16px system-ui,sans-serif}
+.lab-bar{margin-top:.4rem;height:.45rem;border-radius:10px;background:#e4eadc;overflow:hidden}
+.lab-bar span{display:block;height:100%;background:var(--green)}
+.lab-task h2{font-size:clamp(1.18rem,2.5vw,1.45rem)}
+.lab-task h3{margin-top:1.2rem;margin-bottom:.65rem}
+.lab-fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,190px),1fr));gap:.9rem;margin:.8rem 0}
+.lab-fields label{display:flex;flex-direction:column;justify-content:space-between;gap:.35rem;font-size:.9rem;font-weight:700}
+.lab-fields input{width:100%;min-height:46px;border:1px solid #a3b69e;border-radius:9px;background:#fff;padding:.5rem .65rem;color:var(--ink)}
+.lab-match{position:relative;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);column-gap:clamp(26px,8vw,100px);align-items:start;margin:1rem 0}
+.lab-match>div{display:grid;gap:.6rem;z-index:1}
+.lab-match button{min-width:0;min-height:52px;padding:.45rem .55rem;background:var(--white);overflow-wrap:anywhere}
+.lab-match button[aria-pressed=true]{background:#e2edcc;box-shadow:inset 0 0 0 2px var(--green)}
+.lab-match small{display:block;font-size:.72rem;color:var(--muted)}
+.lab-arrows{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;overflow:visible}
+.lab-status{min-height:1.3em;margin:.5rem 0;color:var(--green)}
+.lab-palette-label{margin:.5rem 0 0}
+.lab-task .punnett{margin-left:0}
+@media(max-width:600px){.lab-path{grid-template-columns:1fr}.lab-match button{font-size:.8rem}.lab-match{column-gap:30px}.lab-diagram .gene-pair{flex-basis:104px}}
